@@ -1,0 +1,134 @@
+import java.util.ArrayList;
+import java.util.List;
+
+import org.joml.Vector3f;
+
+import virassan.main.engine.Utils;
+import virassan.main.engine.graphics.FontTexture;
+import virassan.main.engine.graphics.Material;
+import virassan.main.engine.graphics.model.Model;
+import virassan.main.engine.resources.Asset;
+
+public class TextItem extends UIObject{
+
+	private static final float ZPOS = 0.0f;
+	private static final int VERTICES_PER_QUAD = 4;
+	
+	private static int serial;
+	
+	private FontTexture fontTexture;
+	private String text;
+	private String id;
+	
+	public TextItem(String text, Vector3f position) {
+		this(text, new FontTexture(), position);
+	}
+	
+	public TextItem(String text, FontTexture fontTexture, Vector3f position) {
+		super(text, position);
+		setId();
+		this.text = text;
+		this.fontTexture = fontTexture;
+		setAsset(new Asset(id, buildModel()));
+	}
+
+	private void setId() {
+		String num = ((Integer)serial).toString();
+		String text = "TI_";
+		if(num.length() < 3) {
+			text += "0";
+		}
+		if(num.length() < 2) {
+			text += "0";
+		}
+		text += num;
+		id = text;
+	}
+	
+	private Model buildModel() {
+		List<Float> positions = new ArrayList<>();
+		List<Float> texCoords = new ArrayList<>();
+		List<Integer> indices = new ArrayList<>();
+		char[] characters = text.toCharArray();
+		int numChars = characters.length;
+		
+		float startx = 0;
+		for(int i = 0; i < numChars; i++) {
+			FontTexture.CharInfo charInfo = fontTexture.getCharInfo(characters[i]);
+			//build a character tile composed of two triangles
+			
+			//top left vertex
+			positions.add(startx); //x
+			positions.add(0.0f); //y
+			positions.add(ZPOS); //z
+			texCoords.add((float)charInfo.getStartX() / (float)fontTexture.getWidth());
+			texCoords.add(0.0f);
+			indices.add(i * VERTICES_PER_QUAD);
+			
+			//bottom left vertex
+			positions.add(startx); //x
+			positions.add((float)fontTexture.getHeight()); //y
+			positions.add(ZPOS); //z
+			texCoords.add((float)charInfo.getStartX() / (float)fontTexture.getWidth());
+			texCoords.add(1.0f);
+			indices.add(i * VERTICES_PER_QUAD + 1);
+		
+			//bottom right vertex
+			positions.add(startx + charInfo.getWidth()); //x
+			positions.add((float)fontTexture.getHeight()); //y
+			positions.add(ZPOS); //z
+			texCoords.add((float)(charInfo.getStartX() + charInfo.getWidth()) / (float)fontTexture.getWidth());
+			texCoords.add(1.0f);
+			indices.add(i * VERTICES_PER_QUAD + 2);
+			
+			//top right vertex
+			positions.add(startx + charInfo.getWidth()); //x
+			positions.add(0.0f); //y
+			positions.add(ZPOS); //z
+			texCoords.add((float)(charInfo.getStartX() + charInfo.getWidth()) / (float)fontTexture.getWidth());
+			texCoords.add(0.0f);
+			indices.add(i * VERTICES_PER_QUAD + 3);
+			
+			//add indices for top left and bottom right vertices
+			indices.add(i * VERTICES_PER_QUAD);
+			indices.add(i * VERTICES_PER_QUAD + 2);
+			
+			startx += charInfo.getWidth();
+		}
+		
+		float[] posArr = Utils.listToArray(positions);
+		float[] texCoordsArr = Utils.listToArray(texCoords);
+		int[] indicesArr = indices.stream().mapToInt(i -> i).toArray();
+		Model model = new Model(posArr, indicesArr, texCoordsArr , posArr);
+		model.setMaterial(new Material(fontTexture.getTexture()));
+		return model;
+	}
+	
+	@Override
+	public void cleanup() {
+		super.cleanup();
+		fontTexture.cleanup();
+	}
+	
+	
+	public void setText(String text) {
+		this.text = text;
+		getModel().cleanup();
+		// will not work is fontTexture isn't replaced w/ new FontTexture
+		fontTexture.cleanup();
+		fontTexture = new FontTexture();
+		setAsset(new Asset(id, buildModel()));
+	}
+
+	public String getText() { return text; }
+	
+	public boolean equals(TextItem textItem) {
+		return textItem.getText().equals(this.text);
+	}
+
+	@Override
+	public void reset() {
+		// TODO Auto-generated method stub
+		
+	}
+}
